@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String
+  avatar        String?
+  bio           String?
+  averageRating Float     @default(0)
+  totalGames    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  sessions      GameSession[]
+  registrations Registration[]
+  reviewsGiven  PlayerReview[] @relation("Reviewer")
+  reviewsReceived PlayerReview[] @relation("Reviewee")
+  gameReviews   GameReview[]
+  favorites     Favorite[]
+  notifications Notification[]
+}
+
+model Game {
+  id            String    @id @default(cuid())
+  name          String
+  coverImage    String
+  description   String
+  rules         String
+  minPlayers    Int
+  maxPlayers    Int
+  playTime      Int
+  difficulty    String
+  category      String
+  avgRating     Float     @default(0)
+  avgStrategy   Float     @default(0)
+  avgFun        Float     @default(0)
+  avgInteraction Float    @default(0)
+  avgLuck       Float     @default(0)
+  totalRatings  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  
+  sessions      GameSession[]
+  reviews       GameReview[]
+  favorites     Favorite[]
+}
+
+model GameSession {
+  id            String    @id @default(cuid())
+  gameId        String
+  creatorId     String
+  title         String
+  description   String?
+  startTime     DateTime
+  location      String
+  maxPlayers    Int
+  isPublic      Boolean   @default(true)
+  inviteCode    String    @unique
+  status        String    @default("upcoming")
+  createdAt     DateTime  @default(now())
+  
+  game          Game      @relation(fields: [gameId], references: [id])
+  creator       User      @relation(fields: [creatorId], references: [id])
+  registrations Registration[]
+  playerReviews PlayerReview[]
+  gameReviews   GameReview[]
+  
+  @@index([status])
+  @@index([startTime])
+  @@index([gameId])
+}
+
+model Registration {
+  id            String    @id @default(cuid())
+  sessionId     String
+  userId        String
+  status        String    @default("approved")
+  createdAt     DateTime  @default(now())
+  
+  session       GameSession @relation(fields: [sessionId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model PlayerReview {
+  id            String    @id @default(cuid())
+  sessionId     String
+  reviewerId    String
+  revieweeId    String
+  punctuality   Int
+  ruleKnowledge Int
+  sportsmanship Int
+  comment       String?
+  createdAt     DateTime  @default(now())
+  
+  session       GameSession @relation(fields: [sessionId], references: [id])
+  reviewer      User      @relation("Reviewer", fields: [reviewerId], references: [id])
+  reviewee      User      @relation("Reviewee", fields: [revieweeId], references: [id])
+  
+  @@unique([sessionId, reviewerId, revieweeId])
+  @@index([revieweeId])
+}
+
+model GameReview {
+  id            String    @id @default(cuid())
+  sessionId     String
+  gameId        String
+  userId        String
+  overallRating Int
+  strategy      Int
+  fun           Int
+  interaction   Int
+  luck          Int
+  comment       String?
+  createdAt     DateTime  @default(now())
+  
+  session       GameSession @relation(fields: [sessionId], references: [id])
+  game          Game      @relation(fields: [gameId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@unique([sessionId, userId])
+  @@index([gameId])
+}
+
+model Favorite {
+  id            String    @id @default(cuid())
+  userId        String
+  gameId        String
+  createdAt     DateTime  @default(now())
+  
+  user          User      @relation(fields: [userId], references: [id])
+  game          Game      @relation(fields: [gameId], references: [id])
+  
+  @@unique([userId, gameId])
+  @@index([userId])
+}
+
+model Notification {
+  id            String    @id @default(cuid())
+  userId        String
+  type          String
+  content       String
+  read          Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@index([userId, read])
+}
