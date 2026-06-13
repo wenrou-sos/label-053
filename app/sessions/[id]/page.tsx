@@ -81,6 +81,18 @@ export default async function SessionDetailPage({
         },
         orderBy: { createdAt: 'desc' },
       },
+      messages: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   })
 

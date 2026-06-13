@@ -69,3 +69,16 @@ export interface GameReview {
   comment: string | null
   createdAt: Date
 }
+
+export interface SessionMessage {
+  id: string
+  sessionId: string
+  userId: string
+  content: string
+  createdAt: Date
+  user?: {
+    id: string
+    username: string
+    avatar: string | null
+  }
+}

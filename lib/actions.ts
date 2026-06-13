@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { registerSchema, createSessionSchema, playerReviewSchema, gameReviewSchema } from '@/lib/validations'
+import { registerSchema, createSessionSchema, playerReviewSchema, gameReviewSchema, sessionMessageSchema } from '@/lib/validations'
 import { generateInviteCode } from '@/lib/utils'
 import { requireAuth, getCurrentUser } from '@/lib/session'
 import { z } from 'zod'
@@ -595,5 +595,67 @@ export async function joinSessionByInviteCode(inviteCode: string) {
   } catch (error) {
     console.error('Join by invite code error:', error)
     return { error: true, message: '查找失败' }
+  }
+}
+
+export async function createSessionMessage(sessionId: string, content: string) {
+  try {
+    const user = await requireAuth()
+
+    const validated = sessionMessageSchema.safeParse({ content })
+    if (!validated.success) {
+      return {
+        error: true,
+        message: validated.error.issues[0].message,
+      }
+    }
+
+    const session = await prisma.gameSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        registrations: true,
+      },
+    })
+
+    if (!session) {
+      return { error: true, message: '约局不存在' }
+    }
+
+    const isParticipant = session.registrations.some(
+      (r) => r.userId === user.id && r.status === 'approved'
+    )
+    const isCreator = session.creatorId === user.id
+
+    if (!isParticipant && !isCreator) {
+      return { error: true, message: '只有约局参与者才能留言' }
+    }
+
+    const message = await prisma.sessionMessage.create({
+      data: {
+        sessionId,
+        userId: user.id,
+        content: validated.data.content,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+          },
+        },
+      },
+    })
+
+    revalidatePath(`/sessions/${sessionId}`)
+
+    return {
+      error: false,
+      message: '留言成功',
+      data: message,
+    }
+  } catch (error) {
+    console.error('Create session message error:', error)
+    return { error: true, message: '留言失败' }
   }
 }

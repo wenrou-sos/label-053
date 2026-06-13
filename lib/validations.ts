@@ -55,3 +55,10 @@ export const gameReviewSchema = z.object({
   luck: z.number().int().min(1).max(5),
   comment: z.string().max(500, '评论最多500个字符').optional(),
 })
+
+export const sessionMessageSchema = z.object({
+  content: z
+    .string()
+    .min(1, '留言内容不能为空')
+    .max(1000, '留言最多1000个字符'),
+})

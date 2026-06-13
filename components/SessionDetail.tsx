@@ -15,6 +15,7 @@ import {
   XCircle,
   CheckCircle2,
   ChevronLeft,
+  MessageSquare,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -25,6 +26,8 @@ import { SessionParticipants } from '@/components/SessionParticipants'
 import PlayerReviewForm from '@/components/PlayerReviewForm'
 import GameReviewForm from '@/components/GameReviewForm'
 import { ReviewCard } from '@/components/ReviewCard'
+import { SessionMessageList } from '@/components/SessionMessageList'
+import { SessionMessageForm } from '@/components/SessionMessageForm'
 import {
   joinSession,
   leaveSession,
@@ -36,7 +39,7 @@ import {
   cn,
   getStatusLabel,
 } from '@/lib/utils'
-import type { GameSession, Game, User, PlayerReview, GameReview } from '@/types'
+import type { GameSession, Game, User, PlayerReview, GameReview, SessionMessage } from '@/types'
 
 interface Participant {
   user: {
@@ -73,6 +76,13 @@ interface SessionDetailProps {
       }
     })[]
     gameReviews: (GameReview & {
+      user: {
+        id: string
+        username: string
+        avatar: string | null
+      }
+    })[]
+    messages: (SessionMessage & {
       user: {
         id: string
         username: string
@@ -504,6 +514,33 @@ export function SessionDetail({ session, currentUser }: SessionDetailProps) {
                 participants={participants}
                 maxPlayers={session.maxPlayers}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-primary" />
+                局内留言
+                <Badge variant="secondary" className="text-xs">
+                  {session.messages.length}
+                </Badge>
+              </CardTitle>
+              <p className="text-sm text-text-muted mt-1">
+                参与者可以在这里讨论战术、确认时间、分享经验
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <SessionMessageForm
+                sessionId={session.id}
+                canPost={isParticipant || isCreator}
+              />
+              <div className="border-t border-border/50 pt-4">
+                <SessionMessageList
+                  messages={session.messages as any}
+                  creatorId={session.creatorId}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
