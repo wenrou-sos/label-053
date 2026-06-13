@@ -26,6 +26,7 @@ model User {
   gameReviews   GameReview[]
   favorites     Favorite[]
   notifications Notification[]
+  messages      SessionMessage[]
 }
 
 model Game {
@@ -71,6 +72,7 @@ model GameSession {
   registrations Registration[]
   playerReviews PlayerReview[]
   gameReviews   GameReview[]
+  messages      SessionMessage[]
   
   @@index([status])
   @@index([startTime])
@@ -156,4 +158,17 @@ model Notification {
   user          User      @relation(fields: [userId], references: [id])
   
   @@index([userId, read])
+}
+
+model SessionMessage {
+  id            String    @id @default(cuid())
+  sessionId     String
+  userId        String
+  content       String
+  createdAt     DateTime  @default(now())
+  
+  session       GameSession @relation(fields: [sessionId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@index([sessionId, createdAt])
 }
