@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Users, Clock, BookOpen, MessageCircle, ChevronLeft } from 'lucide-react'
+import { Users, Clock, BookOpen, MessageCircle, ChevronLeft, BarChart3, Radar } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { StarRating } from '@/components/ui/StarRating'
 import FavoriteButton from '@/components/FavoriteButton'
+import { GameRatingRadar } from '@/components/GameRatingRadar'
+import { GameRatingTrend, TrendDataPoint } from '@/components/GameRatingTrend'
 import {
   getDifficultyLabel,
   getDifficultyColor,
@@ -66,6 +68,46 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
     orderBy: { createdAt: 'desc' },
     take: 20,
   })
+
+  const allReviewsForTrend = await prisma.gameReview.findMany({
+    where: { gameId: game.id },
+    select: {
+      overallRating: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  const radarDimensions = [
+    { label: '策略性', value: game.avgStrategy, color: 'purple' },
+    { label: '趣味性', value: game.avgFun, color: 'yellow' },
+    { label: '互动性', value: game.avgInteraction, color: 'green' },
+    { label: '运气成分', value: game.avgLuck, color: 'blue' },
+  ]
+
+  const buildTrendData = (raw: { overallRating: number; createdAt: Date }[]): TrendDataPoint[] => {
+    if (raw.length < 2) return []
+    const groups: Record<string, number[]> = {}
+    for (const r of raw) {
+      const d = new Date(r.createdAt)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (!groups[key]) groups[key] = []
+      groups[key].push(r.overallRating)
+    }
+    const keys = Object.keys(groups).sort()
+    if (keys.length < 2) return []
+    return keys.map((k) => {
+      const arr = groups[k]
+      const [y, m] = k.split('-')
+      return {
+        label: `${y}/${m}`,
+        avg: arr.reduce((s, v) => s + v, 0) / arr.length,
+        count: arr.length,
+      }
+    })
+  }
+
+  const trendData = buildTrendData(allReviewsForTrend)
 
   const categories = game.category.split(',').map(c => c.trim()).filter(Boolean)
 
@@ -221,6 +263,32 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
             <p className="text-text-secondary leading-relaxed whitespace-pre-wrap">
               {game.rules}
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Radar className="w-5 h-5 text-purple-400" />
+              多维度评分雷达图
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex justify-center py-4">
+            <GameRatingRadar dimensions={radarDimensions} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-green-400" />
+              评分时间趋势
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-4">
+            <GameRatingTrend data={trendData} />
           </CardContent>
         </Card>
       </div>
