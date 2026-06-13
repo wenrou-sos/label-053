@@ -34,8 +34,8 @@ export default async function GamesPage({ searchParams }: GamesPageProps) {
   const where: any = {}
   if (q) {
     where.OR = [
-      { name: { contains: q, mode: 'insensitive' } },
-      { description: { contains: q, mode: 'insensitive' } },
+      { name: { contains: q } },
+      { description: { contains: q } },
     ]
   }
   if (categoryFilter) {

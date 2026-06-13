@@ -2,11 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['images.unsplash.com', 'picsum.photos'],
+    domains: ['images.unsplash.com', 'picsum.photos', 'api.dicebear.com'],
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000'],
+      allowedOrigins: ['localhost:3000', 'localhost:3001', 'localhost:3005', 'localhost:3010', 'localhost:3011'],
     },
   },
 }

@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useFormState, useFormStatus } from 'react-dom'
 import { createGameSession } from '@/lib/actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -21,20 +20,12 @@ interface GameOption {
   coverImage: string
 }
 
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  return (
-    <Button type="submit" loading={pending} size="lg" className="w-full sm:w-auto">
-      {pending ? '创建中...' : '创建约局'}
-    </Button>
-  )
-}
-
 export default function CreateSessionPage() {
   const router = useRouter()
   const [games, setGames] = useState<GameOption[]>([])
   const [selectedGame, setSelectedGame] = useState<GameOption | null>(null)
-  const [state, formAction] = useFormState(createGameSession, { error: false, message: '' } as any)
+  const [isPending, startTransition] = useTransition()
+  const [state, setState] = useState<{ error: boolean; message: string }>({ error: false, message: '' })
 
   useEffect(() => {
     fetch('/api/games')
@@ -43,11 +34,21 @@ export default function CreateSessionPage() {
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if ((state as any).success) {
-      router.push('/sessions')
-    }
-  }, [state, router])
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    setState({ error: false, message: '' })
+    
+    startTransition(async () => {
+      try {
+        await createGameSession({ error: false, message: '' } as any, formData)
+      } catch (result: any) {
+        if (result && result.error) {
+          setState({ error: true, message: result.message || '创建失败' })
+        }
+      }
+    })
+  }
 
   const gameOptions = [
     { value: '', label: '请选择桌游' },
@@ -103,7 +104,7 @@ export default function CreateSessionPage() {
         </div>
       )}
 
-      <form action={formAction} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -226,7 +227,9 @@ export default function CreateSessionPage() {
               取消
             </Button>
           </Link>
-          <SubmitButton />
+          <Button type="submit" loading={isPending} size="lg" className="w-full sm:w-auto">
+            {isPending ? '创建中...' : '创建约局'}
+          </Button>
         </div>
       </form>
     </div>

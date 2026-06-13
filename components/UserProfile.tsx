@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useFormState, useFormStatus } from 'react-dom'
 import {
   User,
   Users,
@@ -44,16 +43,11 @@ import type {
   GameReview,
 } from '@/types'
 
-function SaveButton() {
-  const { pending } = useFormStatus()
+function SaveButton({ onSave }: { onSave: () => void }) {
   return (
-    <Button type="submit" size="sm" loading={pending}>
-      {pending ? '保存中...' : (
-        <>
-          <Save className="w-4 h-4" />
-          保存
-        </>
-      )}
+    <Button type="button" size="sm" onClick={onSave}>
+      <Save className="w-4 h-4" />
+      保存
     </Button>
   )
 }
@@ -92,13 +86,28 @@ export function UserProfile({
   const router = useRouter()
   const isOwnProfile = currentUserId === user.id
   const [isEditing, setIsEditing] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [bio, setBio] = useState(user.bio || '')
+  const [state, setState] = useState<{ error: boolean; message: string }>({ error: false, message: '' })
   const [activeTab, setActiveTab] = useState<TabKey>(
     sessions.length > 0 ? 'sessions' : reviewsReceived.length > 0 ? 'reviews' : 'favorites'
   )
-  const [state, formAction] = useFormState(updateProfile, {
-    error: false,
-    message: '',
-  })
+
+  const handleSaveProfile = async () => {
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.append('bio', bio)
+      const result = await updateProfile({ error: false, message: '' }, formData)
+      if (result.success) {
+        setState({ error: false, message: '资料已更新' })
+        setIsEditing(false)
+        setTimeout(() => setState({ error: false, message: '' }), 3000)
+        router.refresh()
+      } else {
+        setState({ error: true, message: result.message || '更新失败' })
+      }
+    })
+  }
 
   const hostedSessions = sessions.filter((s) => s.creatorId === user.id)
   const participatedSessions = sessions.filter(
@@ -211,28 +220,32 @@ export function UserProfile({
                   </p>
 
                   {isEditing && isOwnProfile ? (
-                    <form action={formAction} className="mt-4 space-y-4">
+                    <div className="mt-4 space-y-4">
                       <Textarea
-                        name="bio"
                         label="个人简介"
                         placeholder="介绍一下你自己，比如喜欢的桌游类型、常去的桌游吧等..."
                         rows={3}
                         maxLength={500}
-                        defaultValue={user.bio || ''}
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
                       />
                       <div className="flex items-center gap-3">
-                        <SaveButton />
+                        <SaveButton onSave={handleSaveProfile} />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => setIsEditing(false)}
+                          onClick={() => {
+                            setIsEditing(false)
+                            setBio(user.bio || '')
+                          }}
                         >
                           <X className="w-4 h-4" />
                           取消
                         </Button>
                       </div>
-                    </form>
+                      {isPending && <p className="text-sm text-text-muted">保存中...</p>}
+                    </div>
                   ) : (
                     <>
                       {user.bio ? (

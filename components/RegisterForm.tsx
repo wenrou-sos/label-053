@@ -1,39 +1,36 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useFormState, useFormStatus } from 'react-dom'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { registerUser } from '@/lib/actions'
 import { Dice6, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react'
 
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  return (
-    <Button type="submit" size="lg" loading={pending} className="w-full">
-      {pending ? '' : (
-        <>
-          <UserIcon className="w-4 h-4" />
-          创建账号
-        </>
-      )}
-    </Button>
-  )
-}
-
 export function RegisterForm() {
   const router = useRouter()
-  const [state, formAction] = useFormState(registerUser, { error: false, message: '' })
+  const [isPending, startTransition] = useTransition()
+  const [state, setState] = useState<{ error: boolean; message: string }>({ error: false, message: '' })
   const [successMessage, setSuccessMessage] = useState('')
 
-  if (state?.success && !successMessage) {
-    setSuccessMessage(state.message || '注册成功')
-    setTimeout(() => {
-      router.push('/login?registered=true')
-    }, 1500)
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    setState({ error: false, message: '' })
+    
+    startTransition(async () => {
+      const result = await registerUser({ error: false, message: '' }, formData)
+      if (result.success) {
+        setSuccessMessage(result.message || '注册成功')
+        setTimeout(() => {
+          router.push('/login?registered=true')
+        }, 1500)
+      } else {
+        setState({ error: true, message: result.message || '注册失败' })
+      }
+    })
   }
 
   return (
@@ -56,14 +53,14 @@ export function RegisterForm() {
             </div>
           )}
 
-          {state?.error && !successMessage && (
+          {state.error && !successMessage && (
             <div className="mb-5 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm flex items-start gap-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>{state.message}</span>
             </div>
           )}
 
-          <form action={formAction} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <Input
               label="用户名"
               name="username"
@@ -93,7 +90,14 @@ export function RegisterForm() {
               autoComplete="new-password"
             />
 
-            <SubmitButton />
+            <Button type="submit" size="lg" loading={isPending} className="w-full">
+              {isPending ? '' : (
+                <>
+                  <UserIcon className="w-4 h-4" />
+                  创建账号
+                </>
+              )}
+            </Button>
           </form>
 
           <div className="mt-6 text-center">

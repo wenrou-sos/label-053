@@ -57,9 +57,9 @@ export default async function SessionsPage({ searchParams }: SearchParams) {
 
   if (q) {
     where.OR = [
-      { title: { contains: q, mode: 'insensitive' } },
-      { description: { contains: q, mode: 'insensitive' } },
-      { location: { contains: q, mode: 'insensitive' } },
+      { title: { contains: q } },
+      { description: { contains: q } },
+      { location: { contains: q } },
     ]
   }
 
