@@ -1,6 +1,12 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+export interface TrendDataPoint {
+  label: string
+  avg: number
+  count: number
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
@@ -90,4 +96,97 @@ export function formatRelativeTime(date: Date): string {
   if (hours < 24) return `${hours} 小时前`
   if (days < 7) return `${days} 天前`
   return formatDate(date)
+}
+
+interface RawRating {
+  overallRating: number
+  createdAt: Date
+}
+
+function isValidRating(r: any): r is RawRating {
+  if (!r) return false
+  if (typeof r.overallRating !== 'number' || isNaN(r.overallRating)) return false
+  const date = new Date(r.createdAt)
+  return !isNaN(date.getTime())
+}
+
+function groupByKey(
+  raw: RawRating[],
+  getKey: (r: RawRating) => string,
+  formatLabel: (key: string) => string,
+): TrendDataPoint[] | null {
+  const groups: Record<string, number[]> = {}
+  for (const r of raw) {
+    const key = getKey(r)
+    if (!groups[key]) groups[key] = []
+    groups[key].push(r.overallRating)
+  }
+  const keys = Object.keys(groups).sort()
+  if (keys.length < 2) return null
+  return keys.map((k) => {
+    const arr = groups[k]
+    return {
+      label: formatLabel(k),
+      avg: arr.reduce((s, v) => s + v, 0) / arr.length,
+      count: arr.length,
+    }
+  })
+}
+
+function getISOWeek(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
+}
+
+export function buildTrendData(raw: RawRating[]): TrendDataPoint[] {
+  if (!raw || !Array.isArray(raw)) return []
+
+  const validData = raw.filter(isValidRating).sort((a, b) => {
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  })
+
+  if (validData.length < 2) return []
+
+  const byMonth = groupByKey(
+    validData,
+    (r) => {
+      const d = new Date(r.createdAt)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    },
+    (k) => {
+      const [y, m] = k.split('-')
+      return `${y}/${m}`
+    },
+  )
+  if (byMonth) return byMonth
+
+  const byWeek = groupByKey(
+    validData,
+    (r) => getISOWeek(new Date(r.createdAt)),
+    (k) => k.replace('-W', '年第').concat('周'),
+  )
+  if (byWeek) return byWeek
+
+  const byDay = groupByKey(
+    validData,
+    (r) => {
+      const d = new Date(r.createdAt)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    },
+    (k) => {
+      const [y, m, day] = k.split('-')
+      return `${y}/${m}/${day}`
+    },
+  )
+  if (byDay) return byDay
+
+  return validData.map((r, i) => ({
+    label: `第${i + 1}次`,
+    avg: r.overallRating,
+    count: 1,
+  }))
 }

@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/Button'
 import { StarRating } from '@/components/ui/StarRating'
 import FavoriteButton from '@/components/FavoriteButton'
 import { GameRatingRadar } from '@/components/GameRatingRadar'
-import { GameRatingTrend, TrendDataPoint } from '@/components/GameRatingTrend'
+import { GameRatingTrend } from '@/components/GameRatingTrend'
+import { buildTrendData, TrendDataPoint } from '@/lib/utils'
 import {
   getDifficultyLabel,
   getDifficultyColor,
@@ -84,28 +85,6 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
     { label: '互动性', value: game.avgInteraction, color: 'green' },
     { label: '运气成分', value: game.avgLuck, color: 'blue' },
   ]
-
-  const buildTrendData = (raw: { overallRating: number; createdAt: Date }[]): TrendDataPoint[] => {
-    if (raw.length < 2) return []
-    const groups: Record<string, number[]> = {}
-    for (const r of raw) {
-      const d = new Date(r.createdAt)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      if (!groups[key]) groups[key] = []
-      groups[key].push(r.overallRating)
-    }
-    const keys = Object.keys(groups).sort()
-    if (keys.length < 2) return []
-    return keys.map((k) => {
-      const arr = groups[k]
-      const [y, m] = k.split('-')
-      return {
-        label: `${y}/${m}`,
-        avg: arr.reduce((s, v) => s + v, 0) / arr.length,
-        count: arr.length,
-      }
-    })
-  }
 
   const trendData = buildTrendData(allReviewsForTrend)
 

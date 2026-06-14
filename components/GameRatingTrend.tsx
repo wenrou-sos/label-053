@@ -1,13 +1,9 @@
 'use client'
 
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, TrendDataPoint } from '@/lib/utils'
 
-export interface TrendDataPoint {
-  label: string
-  avg: number
-  count: number
-}
+export type { TrendDataPoint }
 
 interface GameRatingTrendProps {
   data: TrendDataPoint[]
@@ -15,7 +11,7 @@ interface GameRatingTrendProps {
 }
 
 export function GameRatingTrend({ data, maxValue = 5 }: GameRatingTrendProps) {
-  if (!data || data.length === 0) {
+  if (!data || data.length < 2) {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-text-muted gap-2">
         <Minus className="w-10 h-10 opacity-40" />
